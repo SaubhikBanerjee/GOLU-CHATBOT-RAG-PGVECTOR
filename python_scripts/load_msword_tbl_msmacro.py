@@ -12,6 +12,8 @@ from langchain.prompts import PromptTemplate
 from langchain.chains.llm import LLMChain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
+from langchain.schema import StrOutputParser
+import timeit
 
 
 def doc_tokenizer():
@@ -38,11 +40,11 @@ def split_in_text_chunks(my_table):
 def generate_summary_v2(my_document):
     llm = CTransformers(model=r"C:\Saubhik\Project Automation\hybrid_search\lama2\llama-2-7b-chat.Q8_0.gguf",
                         model_type='llama',  # Model type Llama
-                        config={'max_new_tokens': 2048,
+                        config={'max_new_tokens': 1024,
                                 'temperature': 0.001,
                                 'context_length': 4096})
     table_summary_template = """
-       Write a detail summary of the table, return your responses that cover the every points of the table. \
+       Write a detail summary of the table, return your responses that covers the every points of the table. \
        You must explain all the Condition type available with description and business description side by side\
        Think step by step. I’m going to tip $999 for a better solution!
         ```{text}```
@@ -50,10 +52,17 @@ def generate_summary_v2(my_document):
         """
     prompt = PromptTemplate.from_template(table_summary_template)
     # Define LLM chain
-    llm_chain = LLMChain(llm=llm, prompt=prompt)
+    llm_chain = LLMChain(llm=llm, prompt=prompt, output_parser=StrOutputParser())
+
+    document_prompt = PromptTemplate(
+        input_variables=["page_content"],
+        template="{page_content}"
+    )
+
     # Define StuffDocumentsChain
     stuff_chain = StuffDocumentsChain(llm_chain=llm_chain,
-                                      document_variable_name="text"
+                                      document_variable_name="text",
+                                      document_prompt=document_prompt
                                       )
     return stuff_chain.invoke(my_document)
 
@@ -125,6 +134,7 @@ def iter_block_items(parent):
 
 def read_tables_with_head(document):
     para_head = ''
+    table_no = 1
     for iter_block_item in iter_block_items(document):  # Iterate over paragraphs and tables
         # print('iter_block_item type: '+str(type(iter_block_item)))
         if isinstance(iter_block_item, Paragraph):
@@ -147,19 +157,27 @@ def read_tables_with_head(document):
                     df.to_markdown(md_buf, disable_numparse=True)
                     md_buf.seek(0)
                     md_str = md_buf.getvalue()
-                    if para_head.strip() in "Price Conditions":
-                        md_doc = langDocument(page_content=md_str,
-                                              metadata={"source": "user"})
-                        # table_summary = generate_summary_v1([md_doc])
-                        table_summary = generate_summary_v2([md_doc])
-                        print(table_summary)
-                        # print("*" * 40)
-                        # inert_data(str(table_summary), str(md_str))
+
+                    md_doc = langDocument(page_content=md_str,
+                                          metadata={"source": "user"})
+                    # table_summary = generate_summary_v1([md_doc])
+                    table_summary = generate_summary_v2([md_doc])
+                    print(table_summary['output_text'], end=" ", flush=True)
+                    print("*" * 40)
+                    table_no = table_no + 1
+                    file_name = "data\\text_chunks\\table_summary_" + str(table_no) + ".txt"
+                    with open(file_name, 'w', encoding='utf-8') as chunk_table:
+                        chunk_table.write(table_summary['output_text'])
 
 
 if __name__ == '__main__':
+    start_time = timeit.default_timer()  # Start timer
     doc = Document(
         "C:\\Saubhik\\Project Automation\\hybrid_search\\data\\Ingestion"
         "\\R1.0_20.22.12_BPD_Calculate_Price and maintain price.docx")
     read_tables_with_head(doc)
+    print('=' * 50)
+    end_time = timeit.default_timer()  # End timer
+    total_time = (end_time - start_time) / 60
+    print("Time to retrieve response %.2f(minute(s)):" % total_time)
 
