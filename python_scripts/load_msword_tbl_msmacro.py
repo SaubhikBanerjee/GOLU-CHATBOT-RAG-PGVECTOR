@@ -1,3 +1,12 @@
+"""
+I have faced a huge challenges with tables. The meaning of the table is in the parent
+paragraph and the table column heading does not actually correspond to the real
+meaning of the table or the question asked by the users.
+So, the approach taken is to load the tables along with the paragraph heading in to pandas
+dataframe, then the dataframe is converted into markdown (as LLM understand better, in
+my experience) and passed to LLM for summary.
+These summaries are stored into text file which will be latter loaded to DB.
+"""
 import pandas as pd
 from docx import Document
 from docx.text.paragraph import Paragraph

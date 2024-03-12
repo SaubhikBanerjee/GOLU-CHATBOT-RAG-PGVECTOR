@@ -1,3 +1,9 @@
+"""
+This script is used to load my Word files (docx) using UnstructuredWordDocumentLoader
+Then it is split in chunks using RecursiveCharacterTextSplitter and write all the chunks in
+a text file.
+I will use those text file later to load in the database.
+"""
 from langchain_community.document_loaders import UnstructuredWordDocumentLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.text_splitter import NLTKTextSplitter
